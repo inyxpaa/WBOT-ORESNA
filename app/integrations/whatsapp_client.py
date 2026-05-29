@@ -1,5 +1,5 @@
 """
-whatsapp_client.py - Comunicación con WhatsApp Cloud API
+app/integrations/whatsapp_client.py - Comunicación con WhatsApp Cloud API
 Gestiona el envío de mensajes de texto, botones interactivos y alertas al jefe.
 
 Modo simulación: si WHATSAPP_TOKEN está vacío o es "SIMULACION",
@@ -8,7 +8,7 @@ los mensajes se almacenan en memoria en lugar de enviarse a Meta API.
 import httpx
 import logging
 from collections import defaultdict
-from config import settings
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +32,9 @@ class WhatsAppClient:
         self._bandeja_salida: dict[str, list[str]] = defaultdict(list)
 
         if MODO_SIMULACION:
-            logger.info("🧪 Modo SIMULACIÓN activo (sin WhatsApp real)")
+            logger.info("Modo SIMULACION activo (sin WhatsApp real)")
         else:
-            logger.info("📱 Modo PRODUCCIÓN activo (WhatsApp Cloud API)")
+            logger.info("Modo PRODUCCION activo (WhatsApp Cloud API)")
 
     def obtener_mensajes_simulados(self, phone: str) -> list[str]:
         """
@@ -57,10 +57,10 @@ class WhatsAppClient:
             resp = await client.post(WHATSAPP_API_URL, json=payload, headers=HEADERS)
             if resp.status_code != 200:
                 logger.error(
-                    f"❌ WhatsApp API error [{resp.status_code}]: {resp.text}"
+                    f"WhatsApp API error [{resp.status_code}]: {resp.text}"
                 )
             else:
-                logger.debug(f"✅ Mensaje enviado a {payload.get('to')}")
+                logger.debug(f"Mensaje enviado a {payload.get('to')}")
             return resp
 
     async def enviar_texto(self, to: str, texto: str) -> None:
@@ -68,7 +68,7 @@ class WhatsAppClient:
         if MODO_SIMULACION:
             # Guardar en bandeja para que el simulador web lo recoja
             self._bandeja_salida[to].append(texto)
-            logger.info(f"[SIM] → [{to}]: {texto[:80]}...")
+            logger.info(f"[SIM] -> [{to}]: {texto[:80]}...")
             return
 
         payload = {
@@ -97,7 +97,7 @@ class WhatsAppClient:
                 "_(O pulsa uno de los botones rápidos)_"
             )
             self._bandeja_salida[to].append(bienvenida)
-            logger.info(f"[SIM] → [{to}]: Bienvenida enviada")
+            logger.info(f"[SIM] -> [{to}]: Bienvenida enviada")
             return
 
         payload = {
@@ -172,9 +172,9 @@ class WhatsAppClient:
 
         if not settings.BOSS_PHONE:
             logger.warning(
-                "⚠️  BOSS_PHONE no configurado. No se puede enviar alerta al jefe."
+                "BOSS_PHONE no configurado. No se puede enviar alerta al jefe."
             )
-            logger.warning(f"📋 Datos del cliente: {lead}")
+            logger.warning(f"Datos del cliente: {lead}")
             return
 
         payload = {
@@ -184,7 +184,7 @@ class WhatsAppClient:
             "text": {"body": mensaje},
         }
         await self._post(payload)
-        logger.info(f"🔔 Alerta enviada al jefe ({settings.BOSS_PHONE})")
+        logger.info(f"Alerta enviada al jefe ({settings.BOSS_PHONE})")
 
 
 class SimulatorWhatsAppClient:
@@ -205,7 +205,7 @@ class SimulatorWhatsAppClient:
 
     async def enviar_texto(self, to: str, texto: str) -> None:
         self._bandeja[to].append(texto)
-        logger.info(f"[SIM] → [{to}]: {texto[:80]}")
+        logger.info(f"[SIM] -> [{to}]: {texto[:80]}")
 
     async def enviar_bienvenida(self, to: str) -> None:
         bienvenida = (
@@ -218,7 +218,7 @@ class SimulatorWhatsAppClient:
             "_(O pulsa uno de los botones rápidos)_"
         )
         self._bandeja[to].append(bienvenida)
-        logger.info(f"[SIM] → [{to}]: Bienvenida enviada")
+        logger.info(f"[SIM] -> [{to}]: Bienvenida enviada")
 
     async def alertar_jefe(self, cliente_phone: str, lead: dict) -> None:
         nombre = lead.get("nombre") or "Sin registrar"

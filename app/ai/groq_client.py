@@ -1,16 +1,14 @@
 """
-gemini_client.py - Cliente de Google Gemini (IA gratuita)
-Usa el SDK moderno: google-genai
-Modelo: gemini-2.0-flash-lite (gratis: 30 RPM, 1.500 req/día, 1M tokens/día)
-Obtén tu clave GRATIS en: https://aistudio.google.com/apikey
+app/ai/groq_client.py - Cliente de Groq (Llama 3 100% gratis)
+Usa el SDK: groq
+Modelo: llama3-8b-8192 (súper rápido y gratuito)
 """
 import asyncio
 import logging
 
-from google import genai
-from google.genai import types
+from groq import Groq
 
-from config import settings
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +18,7 @@ SYSTEM_PROMPT = """Eres AIA, la asistente inmobiliaria virtual de ORESNA Inmobil
 PERSONALIDAD:
 - Amable, profesional y concisa
 - Usas emojis con moderación para hacer la conversación agradable
-- Siempre hablas en español
+- Siempre hablas en español nativo de España
 
 OBJETIVOS:
 1. Ayudar al cliente a encontrar la propiedad perfecta de nuestro catálogo
@@ -38,39 +36,36 @@ REGLAS ESTRICTAS:
 - Si una pregunta no está relacionada con inmobiliaria, responde brevemente y redirige hacia las propiedades"""
 
 
-class GeminiClient:
+class GroqClient:
     """
-    Cliente de Google Gemini con gestión de historial por usuario.
-    Usa el nuevo SDK google-genai (v1.x).
+    Cliente de Groq con gestión de historial por usuario.
     """
 
     def __init__(self):
-        self._client: genai.Client | None = None
+        self._client: Groq | None = None
         self._initialized = False
-        # Historial por usuario: phone -> list[Content]
+        # Historial por usuario: phone -> list[dict]
         self.historiales: dict[str, list] = {}
 
     def _init(self) -> bool:
-        """Inicializa el cliente Gemini de forma lazy"""
+        """Inicializa el cliente Groq de forma lazy"""
         if self._initialized:
             return True
 
-        if not settings.GEMINI_API_KEY or settings.GEMINI_API_KEY.startswith(
-            "PENDIENTE"
-        ):
+        if not settings.GROQ_API_KEY:
             logger.error(
-                "❌ GEMINI_API_KEY no configurada. "
-                "Obtén una GRATIS en https://aistudio.google.com/apikey"
+                "GROQ_API_KEY no configurada. "
+                "Obtén una GRATIS en https://console.groq.com/keys"
             )
             return False
 
         try:
-            self._client = genai.Client(api_key=settings.GEMINI_API_KEY)
+            self._client = Groq(api_key=settings.GROQ_API_KEY)
             self._initialized = True
-            logger.info("✅ Gemini 2.0 Flash Lite (google-genai) inicializado")
+            logger.info("Groq (Llama 3) inicializado correctamente")
             return True
         except Exception as e:
-            logger.error(f"❌ Error iniciando Gemini: {e}")
+            logger.error(f"Error iniciando Groq: {e}")
             return False
 
     def clear_session(self, phone: str) -> None:
@@ -80,44 +75,34 @@ class GeminiClient:
     def _get_historial(self, phone: str) -> list:
         """Obtiene o crea el historial de un usuario"""
         if phone not in self.historiales:
-            self.historiales[phone] = []
+            self.historiales[phone] = [
+                {"role": "system", "content": SYSTEM_PROMPT}
+            ]
         return self.historiales[phone]
 
-    def _llamar_gemini(self, phone: str, prompt: str) -> str:
-        """Llamada síncrona a Gemini (se ejecuta en hilo separado desde async)"""
+    def _llamar_groq(self, phone: str, prompt: str) -> str:
+        """Llamada síncrona a Groq (se ejecuta en hilo separado desde async)"""
         historial = self._get_historial(phone)
 
         # Añadir mensaje del usuario al historial
-        historial.append(
-            types.Content(
-                role="user",
-                parts=[types.Part(text=prompt)],
-            )
+        historial.append({"role": "user", "content": prompt})
+
+        # Llamada a la API de Groq
+        chat_completion = self._client.chat.completions.create(
+            messages=historial,
+            model="llama-3.1-8b-instant",
+            temperature=0.7,
+            max_tokens=400,
         )
 
-        response = self._client.models.generate_content(
-            model="gemini-2.0-flash-lite",
-            contents=historial,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                max_output_tokens=400,
-                temperature=0.7,
-            ),
-        )
-
-        respuesta_texto = response.text
+        respuesta_texto = chat_completion.choices[0].message.content
 
         # Añadir respuesta del modelo al historial
-        historial.append(
-            types.Content(
-                role="model",
-                parts=[types.Part(text=respuesta_texto)],
-            )
-        )
+        historial.append({"role": "assistant", "content": respuesta_texto})
 
-        # Limitar historial a últimos 20 turnos para evitar tokens excesivos
-        if len(historial) > 40:
-            self.historiales[phone] = historial[-40:]
+        # Limitar historial a últimos 20 turnos (+1 del system prompt) para evitar tokens excesivos
+        if len(historial) > 41:
+            self.historiales[phone] = [historial[0]] + historial[-40:]
 
         return respuesta_texto
 
@@ -129,14 +114,6 @@ class GeminiClient:
     ) -> str:
         """
         Genera una respuesta de IA para el usuario.
-
-        Args:
-            phone: Número de teléfono del usuario (para mantener historial)
-            mensaje: Mensaje o contexto de la búsqueda del usuario
-            contexto_rag: Propiedades encontradas para inyectar como contexto RAG
-
-        Returns:
-            Texto de respuesta de la IA
         """
         if not self._init():
             return (
@@ -160,11 +137,11 @@ class GeminiClient:
                 prompt = mensaje
 
             # Ejecutamos en un hilo para no bloquear el event loop de FastAPI
-            respuesta = await asyncio.to_thread(self._llamar_gemini, phone, prompt)
+            respuesta = await asyncio.to_thread(self._llamar_groq, phone, prompt)
             return respuesta
 
         except Exception as e:
-            logger.error(f"❌ Error Gemini para {phone}: {e}")
+            logger.error(f"Error Groq para {phone}: {e}")
             return (
                 "Lo siento, estoy teniendo dificultades técnicas. "
                 "Por favor escribe *Asesor* y un agente de ORESNA te atenderá enseguida. 👤"
@@ -172,4 +149,4 @@ class GeminiClient:
 
 
 # Instancia global (singleton)
-gemini_ai = GeminiClient()
+groq_ai = GroqClient()

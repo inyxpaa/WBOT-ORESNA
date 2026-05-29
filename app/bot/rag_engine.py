@@ -1,5 +1,5 @@
 """
-rag_engine.py - Motor de Búsqueda Inteligente (RAG)
+app/bot/rag_engine.py - Motor de Búsqueda Inteligente (RAG)
 Generación Aumentada por Recuperación sobre el catálogo de propiedades.
 
 Estrategia híbrida:
@@ -29,7 +29,7 @@ class MotorRAG:
         self.vectorizer: TfidfVectorizer | None = None
         self.matrix = None
 
-    def cargar_propiedades(self, ruta: str = "propiedades.csv") -> None:
+    def cargar_propiedades(self, ruta: str = "data/propiedades.csv") -> None:
         """
         Carga el catálogo CSV y construye el índice TF-IDF para búsqueda semántica.
         Columnas requeridas: id, titulo, tipo, zona, precio, habitaciones,
@@ -57,13 +57,13 @@ class MotorRAG:
             )
             self.matrix = self.vectorizer.fit_transform(self.df["_texto"])
 
-            logger.info(f"✅ {len(self.df)} propiedades indexadas en el motor RAG")
+            logger.info(f"{len(self.df)} propiedades indexadas en el motor RAG")
 
         except FileNotFoundError:
-            logger.error(f"❌ No se encontró el catálogo en '{ruta}'")
+            logger.error(f"No se encontro el catalogo en '{ruta}'")
             self.df = pd.DataFrame()
         except Exception as e:
-            logger.error(f"❌ Error cargando propiedades: {e}")
+            logger.error(f"Error cargando propiedades: {e}")
             self.df = pd.DataFrame()
 
     def buscar(
@@ -86,7 +86,7 @@ class MotorRAG:
             Lista de hasta 3 propiedades como diccionarios
         """
         if self.df is None or len(self.df) == 0:
-            logger.warning("⚠️  Catálogo vacío o no cargado")
+            logger.warning("Catalogo vacio o no cargado")
             return []
 
         df = self.df.copy()
@@ -148,7 +148,7 @@ class MotorRAG:
         propiedades = resultado.drop(columns=["_texto"], errors="ignore").to_dict(
             "records"
         )
-        logger.info(f"🔍 RAG encontró {len(propiedades)} propiedades")
+        logger.info(f"RAG encontro {len(propiedades)} propiedades")
         return propiedades
 
     def total(self) -> int:

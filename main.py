@@ -1,5 +1,5 @@
 """
-WBOT.py - Punto de entrada principal del Bot Inmobiliario ORESNA
+main.py - Punto de entrada principal del Bot Inmobiliario ORESNA
 Servidor FastAPI con webhook de WhatsApp Cloud API
 
 Endpoints:
@@ -22,10 +22,10 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 
-from config import settings
-from conversation import gestor
-from rag_engine import motor_rag
-from whatsapp_client import WhatsAppClient, SimulatorWhatsAppClient
+from app.core.config import settings
+from app.bot.conversation import gestor
+from app.bot.rag_engine import motor_rag
+from app.integrations.whatsapp_client import WhatsAppClient, SimulatorWhatsAppClient
 
 # ── Configuración de logging ────────────────────────────────────────────────
 logging.basicConfig(
@@ -40,47 +40,44 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Inicialización al arrancar el servidor"""
     logger.info("=" * 55)
-    logger.info("🚀 Iniciando ORESNA WhatsApp Bot...")
+    logger.info("Iniciando ORESNA WhatsApp Bot...")
     logger.info("=" * 55)
 
     # Cargar catálogo de propiedades y construir índice RAG
     motor_rag.cargar_propiedades(settings.CATALOG_PATH)
-    logger.info(f"📦 Catálogo cargado: {motor_rag.total()} propiedades disponibles")
+    logger.info(f"Catalogo cargado: {motor_rag.total()} propiedades disponibles")
 
     # Verificar configuración
     if not settings.WHATSAPP_TOKEN or settings.WHATSAPP_TOKEN in ("", "tu_token_de_meta_aqui"):
-        logger.warning("⚠️  WHATSAPP_TOKEN no configurado → Modo SIMULACIÓN activo")
-        logger.info("🧪 Simulador disponible en: http://localhost:8000/simulator")
+        logger.warning("WHATSAPP_TOKEN no configurado -> Modo SIMULACION activo")
+        logger.info("Simulador disponible en: http://localhost:8000/simulator")
     else:
-        logger.info(f"📱 WhatsApp conectado | Phone ID: {settings.PHONE_NUMBER_ID}")
+        logger.info(f"WhatsApp conectado | Phone ID: {settings.PHONE_NUMBER_ID}")
 
-    if not settings.GEMINI_API_KEY or settings.GEMINI_API_KEY.startswith("PENDIENTE"):
-        logger.warning(
-            "⚠️  GEMINI_API_KEY no configurada. "
-            "Obtenla GRATIS en https://aistudio.google.com/apikey"
-        )
+    if not settings.GROQ_API_KEY or settings.GROQ_API_KEY.startswith("PENDIENTE"):
+        logger.warning("GROQ_API_KEY no configurada. Las respuestas de IA fallarán.")
     else:
-        logger.info("🤖 Gemini AI configurado correctamente")
+        logger.info("Groq AI configurado correctamente")
 
     if not settings.BOSS_PHONE:
-        logger.warning("⚠️  BOSS_PHONE no configurado (alertas al jefe desactivadas)")
+        logger.warning("BOSS_PHONE no configurado (alertas al jefe desactivadas)")
     else:
-        logger.info(f"📞 Asesor configurado: +{settings.BOSS_PHONE}")
+        logger.info(f"Asesor configurado: +{settings.BOSS_PHONE}")
 
-    logger.info(f"🔐 Verify Token: {settings.VERIFY_TOKEN}")
-    logger.info("✅ Bot listo para recibir mensajes")
+    logger.info(f"Verify Token: {settings.VERIFY_TOKEN}")
+    logger.info("Bot listo para recibir mensajes")
     logger.info("=" * 55)
 
     yield
 
-    logger.info("🛑 Bot detenido")
+    logger.info("Bot detenido")
 
 
 # ── Aplicación FastAPI ───────────────────────────────────────────────────────
 app = FastAPI(
     title="ORESNA WhatsApp Bot",
     description="Bot inmobiliario con IA (RAG + Gemini) para WhatsApp Cloud API",
-    version="1.1.0",
+    version="1.2.0",
     lifespan=lifespan,
 )
 
@@ -99,13 +96,13 @@ class SimulateRequest(BaseModel):
 @app.get("/", tags=["Status"])
 async def health():
     """Health check - muestra el estado del bot"""
-    from whatsapp_client import MODO_SIMULACION
+    from app.integrations.whatsapp_client import MODO_SIMULACION
     return {
-        "status": "🟢 Bot ORESNA activo",
-        "modo": "🧪 Simulación" if MODO_SIMULACION else "📱 Producción (WhatsApp real)",
+        "status": "activo",
+        "modo": "simulacion" if MODO_SIMULACION else "produccion",
         "propiedades_en_catalogo": motor_rag.total(),
         "sesiones_activas": len(gestor.sesiones),
-        "version": "1.1.0",
+        "version": "1.2.0",
         "simulador": "http://localhost:8000/simulator" if MODO_SIMULACION else None,
     }
 
@@ -122,15 +119,15 @@ async def verificar_webhook(
     servidor es tuyo. Devuelve hub.challenge si el token es correcto.
     """
     logger.info(
-        f"🔎 Verificación webhook - mode: {hub_mode}, token: {hub_verify_token}"
+        f"Verificacion webhook - mode: {hub_mode}, token: {hub_verify_token}"
     )
 
     if hub_mode == "subscribe" and hub_verify_token == settings.VERIFY_TOKEN:
-        logger.info("✅ Webhook verificado correctamente por Meta")
+        logger.info("Webhook verificado correctamente por Meta")
         return Response(content=hub_challenge, media_type="text/plain")
 
     logger.warning(
-        f"❌ Verificación fallida. "
+        f"Verificacion fallida. "
         f"Token recibido: '{hub_verify_token}' | "
         f"Token esperado: '{settings.VERIFY_TOKEN}'"
     )
@@ -189,20 +186,20 @@ async def recibir_mensaje(request: Request):
         if not texto or not from_number:
             return {"status": "ok"}
 
-        logger.info(f"📩 [{from_number}] → '{texto}'")
+        logger.info(f"[{from_number}] -> '{texto}'")
 
-        # ── Verificar comando "Asesor" (prioridad máxima) ─────────────
+        # Verificar comando "Asesor" (prioridad máxima)
         if "asesor" in texto.lower():
             await gestor.activar_humano(from_number, wsp)
             return {"status": "ok"}
 
-        # ── Procesar mensaje a través de la máquina de estados ────────
+        # Procesar mensaje a través de la máquina de estados
         await gestor.procesar(from_number, texto, wsp)
 
         return {"status": "ok"}
 
     except Exception as e:
-        logger.error(f"❌ Error procesando webhook: {e}", exc_info=True)
+        logger.error(f"Error procesando webhook: {e}", exc_info=True)
         return {"status": "error", "detail": str(e)}
 
 
@@ -214,7 +211,7 @@ async def simulador():
     Simulador visual de WhatsApp para pruebas locales.
     No requiere credenciales de WhatsApp para funcionar.
     """
-    sim_path = Path(__file__).parent / "simulator.html"
+    sim_path = Path(__file__).parent / "static" / "simulator.html"
     if sim_path.exists():
         return FileResponse(sim_path, media_type="text/html")
     return HTMLResponse("<h1>simulator.html no encontrado</h1>", status_code=404)
@@ -232,7 +229,7 @@ async def simular_mensaje(req: SimulateRequest):
     if not texto:
         return {"respuestas": []}
 
-    logger.info(f"🧪 [SIM] [{phone}] → '{texto}'")
+    logger.info(f"[SIM] [{phone}] -> '{texto}'")
 
     # Usamos un cliente simulador dedicado que SIEMPRE guarda en memoria
     sim_wsp = SimulatorWhatsAppClient()
@@ -262,9 +259,9 @@ async def obtener_mensajes(phone: str):
 async def ver_leads():
     """
     Ver todos los leads capturados.
-    ⚠️ Solo para desarrollo - eliminar o proteger en producción
+    Solo para desarrollo - eliminar o proteger en produccion.
     """
-    leads_file = "leads.json"
+    leads_file = "data/leads.json"
     if os.path.exists(leads_file):
         with open(leads_file, "r", encoding="utf-8") as f:
             leads = json.load(f)
@@ -275,12 +272,12 @@ async def ver_leads():
 @app.post("/reset/{phone}", tags=["Desarrollo"])
 async def reiniciar_sesion(phone: str):
     """
-    Reinicia la sesión de un usuario (útil para pruebas).
-    ⚠️ Solo para desarrollo
+    Reinicia la sesion de un usuario (util para pruebas).
+    Solo para desarrollo.
     """
     if phone in gestor.sesiones:
         del gestor.sesiones[phone]
-        gemini_ai = __import__("gemini_client", fromlist=["gemini_ai"]).gemini_ai
-        gemini_ai.clear_session(phone)
+        from app.ai.groq_client import groq_ai
+        groq_ai.clear_session(phone)
         return {"status": "ok", "message": f"Sesión de {phone} reiniciada"}
     return {"status": "ok", "message": f"No había sesión activa para {phone}"}

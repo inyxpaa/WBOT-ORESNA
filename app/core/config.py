@@ -1,5 +1,5 @@
 """
-config.py - Configuración centralizada del bot ORESNA
+app/core/config.py - Configuración centralizada del bot ORESNA
 Carga todas las variables de entorno desde .env
 """
 import os
@@ -21,7 +21,7 @@ class Settings:
     BOSS_PHONE: str = os.getenv("BOSS_PHONE", "")
 
     # Ruta al catálogo de propiedades
-    CATALOG_PATH: str = os.getenv("CATALOG_PATH", "propiedades.csv")
+    CATALOG_PATH: str = os.getenv("CATALOG_PATH", "data/propiedades.csv")
 
 
 settings = Settings()
