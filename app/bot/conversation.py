@@ -16,7 +16,7 @@ import re
 from datetime import datetime
 from enum import Enum
 
-from app.ai.gemini_client import gemini_ai
+from app.ai.groq_client import groq_ai
 from app.bot.rag_engine import motor_rag
 
 logger = logging.getLogger(__name__)
@@ -75,7 +75,7 @@ class GestorSesiones:
         """Obtiene o crea la sesión de un usuario"""
         if phone not in self.sesiones:
             self.sesiones[phone] = Sesion(phone)
-            logger.info(f"🆕 Nueva sesión creada para {phone}")
+            logger.info(f"Nueva sesion creada para {phone}")
         return self.sesiones[phone]
 
     # ------------------------------------------------------------------
@@ -97,7 +97,7 @@ class GestorSesiones:
 
         if sesion.intentos_fallidos >= MAX_INTENTOS_FALLIDOS:
             logger.warning(
-                f"🔄 Anti-bucle activado para {phone} "
+                f"Anti-bucle activado para {phone} "
                 f"({sesion.intentos_fallidos} intentos fallidos seguidos)"
             )
             await wsp.enviar_texto(
@@ -133,7 +133,7 @@ class GestorSesiones:
 
         # Si el bot está pausado, ignorar todos los mensajes
         if sesion.estado == Estado.HUMANO:
-            logger.info(f"⏸️  Bot pausado para {phone}, mensaje ignorado")
+            logger.info(f"Bot pausado para {phone}, mensaje ignorado")
             return
 
         estado = sesion.estado
@@ -244,12 +244,12 @@ class GestorSesiones:
 
             if resultados:
                 contexto = self._formatear_propiedades(resultados)
-                respuesta = await gemini_ai.responder(
+                respuesta = await groq_ai.responder(
                     phone, query, contexto_rag=contexto
                 )
             else:
                 # No hay resultados exactos: Gemini lo gestiona con elegancia
-                respuesta = await gemini_ai.responder(
+                respuesta = await groq_ai.responder(
                     phone,
                     f"El cliente busca {sesion.tipo} en {sesion.zona} "
                     f"con presupuesto {sesion.presupuesto}€ y {sesion.habitaciones} habitaciones, "
@@ -329,7 +329,7 @@ class GestorSesiones:
                     "📍 *¿En qué zona te interesa esta vez?*",
                 )
             else:
-                respuesta = await gemini_ai.responder(phone, texto)
+                respuesta = await groq_ai.responder(phone, texto)
                 await wsp.enviar_texto(phone, respuesta)
 
     # ------------------------------------------------------------------
@@ -356,7 +356,7 @@ class GestorSesiones:
         # Alerta al jefe con los datos del cliente
         await wsp.alertar_jefe(phone, sesion.to_dict())
 
-        logger.info(f"🚨 Modo HUMANO activado para {phone}")
+        logger.info(f"Modo HUMANO activado para {phone}")
 
     # ------------------------------------------------------------------
     # Helpers privados
@@ -452,7 +452,7 @@ class GestorSesiones:
             json.dump(leads, f, ensure_ascii=False, indent=2)
 
         logger.info(
-            f"✅ Lead guardado: {sesion.nombre} | {sesion.email} | {sesion.phone}"
+            f"Lead guardado: {sesion.nombre} | {sesion.email} | {sesion.phone}"
         )
 
 
