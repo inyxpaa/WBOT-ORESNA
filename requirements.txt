@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+httpx
+google-genai
+pandas
+scikit-learn
+numpy
+python-dotenv

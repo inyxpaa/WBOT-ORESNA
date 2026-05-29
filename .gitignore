@@ -1,0 +1,38 @@
+# ============================================================
+# ORESNA WhatsApp Bot - .gitignore
+# ============================================================
+
+# NUNCA subir variables de entorno con claves reales
+.env
+
+# Entorno virtual de Python
+venv/
+venv_local/
+env/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Datos sensibles de leads / clientes
+leads.json
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Archivos temporales
+*.tmp
+*.temp
