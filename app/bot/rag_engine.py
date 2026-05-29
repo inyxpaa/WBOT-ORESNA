@@ -1,5 +1,5 @@
 """
-rag_engine.py - Motor de Búsqueda Inteligente (RAG)
+app/bot/rag_engine.py - Motor de Búsqueda Inteligente (RAG)
 Generación Aumentada por Recuperación sobre el catálogo de propiedades.
 
 Estrategia híbrida:
@@ -29,7 +29,7 @@ class MotorRAG:
         self.vectorizer: TfidfVectorizer | None = None
         self.matrix = None
 
-    def cargar_propiedades(self, ruta: str = "propiedades.csv") -> None:
+    def cargar_propiedades(self, ruta: str = "data/propiedades.csv") -> None:
         """
         Carga el catálogo CSV y construye el índice TF-IDF para búsqueda semántica.
         Columnas requeridas: id, titulo, tipo, zona, precio, habitaciones,

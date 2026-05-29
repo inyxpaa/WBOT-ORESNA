@@ -17,6 +17,7 @@ __pycache__/
 
 # Datos sensibles de leads / clientes
 leads.json
+data/leads.json
 
 # Archivos del sistema
 .DS_Store

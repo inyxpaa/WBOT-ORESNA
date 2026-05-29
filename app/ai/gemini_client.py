@@ -1,5 +1,5 @@
 """
-gemini_client.py - Cliente de Google Gemini (IA gratuita)
+app/ai/gemini_client.py - Cliente de Google Gemini (IA gratuita)
 Usa el SDK moderno: google-genai
 Modelo: gemini-2.0-flash-lite (gratis: 30 RPM, 1.500 req/día, 1M tokens/día)
 Obtén tu clave GRATIS en: https://aistudio.google.com/apikey
@@ -10,7 +10,7 @@ import logging
 from google import genai
 from google.genai import types
 
-from config import settings
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

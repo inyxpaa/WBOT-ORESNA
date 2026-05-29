@@ -2,7 +2,7 @@
 chcp 65001 >nul
 echo ============================================
 echo   ORESNA WhatsApp Bot - Arranque Local
-echo   Version 1.1.0 - Con Simulador Visual
+echo   Version 1.2.0 - Estructura modular por carpetas
 echo ============================================
 echo.
 
@@ -47,6 +47,6 @@ echo.
 :: Abrir el simulador en el navegador tras 3 segundos
 start "" /B cmd /C "timeout /t 3 /nobreak >nul && start http://localhost:8000/simulator"
 
-%PYTHON% -m uvicorn WBOT:app --reload --port 8000
+%PYTHON% -m uvicorn main:app --reload --port 8000
 
 pause

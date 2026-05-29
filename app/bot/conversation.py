@@ -1,5 +1,5 @@
 """
-conversation.py - Máquina de estados de la conversación inmobiliaria
+app/bot/conversation.py - Máquina de estados de la conversación inmobiliaria
 
 Flujo completo:
   NUEVO → ESPERANDO_TIPO → ESPERANDO_ZONA → ESPERANDO_PRESUPUESTO
@@ -16,12 +16,12 @@ import re
 from datetime import datetime
 from enum import Enum
 
-from gemini_client import gemini_ai
-from rag_engine import motor_rag
+from app.ai.gemini_client import gemini_ai
+from app.bot.rag_engine import motor_rag
 
 logger = logging.getLogger(__name__)
 
-LEADS_FILE = "leads.json"
+LEADS_FILE = "data/leads.json"
 MAX_INTENTOS_FALLIDOS = 3  # Tras 3 fallos consecutivos → escalar a asesor
 
 
@@ -431,7 +431,7 @@ class GestorSesiones:
         return "\n\n".join(lineas)
 
     def _guardar_lead(self, sesion: Sesion) -> None:
-        """Guarda el lead capturado en leads.json"""
+        """Guarda el lead capturado en data/leads.json"""
         lead = {
             "fecha": datetime.now().isoformat(),
             **sesion.to_dict(),
@@ -447,6 +447,7 @@ class GestorSesiones:
 
         leads.append(lead)
 
+        os.makedirs(os.path.dirname(LEADS_FILE), exist_ok=True)
         with open(LEADS_FILE, "w", encoding="utf-8") as f:
             json.dump(leads, f, ensure_ascii=False, indent=2)
 

@@ -1,5 +1,5 @@
 """
-whatsapp_client.py - Comunicación con WhatsApp Cloud API
+app/integrations/whatsapp_client.py - Comunicación con WhatsApp Cloud API
 Gestiona el envío de mensajes de texto, botones interactivos y alertas al jefe.
 
 Modo simulación: si WHATSAPP_TOKEN está vacío o es "SIMULACION",
@@ -8,7 +8,7 @@ los mensajes se almacenan en memoria en lugar de enviarse a Meta API.
 import httpx
 import logging
 from collections import defaultdict
-from config import settings
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,5 @@
 """
-WBOT.py - Punto de entrada principal del Bot Inmobiliario ORESNA
+main.py - Punto de entrada principal del Bot Inmobiliario ORESNA
 Servidor FastAPI con webhook de WhatsApp Cloud API
 
 Endpoints:
@@ -22,10 +22,10 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 
-from config import settings
-from conversation import gestor
-from rag_engine import motor_rag
-from whatsapp_client import WhatsAppClient, SimulatorWhatsAppClient
+from app.core.config import settings
+from app.bot.conversation import gestor
+from app.bot.rag_engine import motor_rag
+from app.integrations.whatsapp_client import WhatsAppClient, SimulatorWhatsAppClient
 
 # ── Configuración de logging ────────────────────────────────────────────────
 logging.basicConfig(
@@ -80,7 +80,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="ORESNA WhatsApp Bot",
     description="Bot inmobiliario con IA (RAG + Gemini) para WhatsApp Cloud API",
-    version="1.1.0",
+    version="1.2.0",
     lifespan=lifespan,
 )
 
@@ -99,13 +99,13 @@ class SimulateRequest(BaseModel):
 @app.get("/", tags=["Status"])
 async def health():
     """Health check - muestra el estado del bot"""
-    from whatsapp_client import MODO_SIMULACION
+    from app.integrations.whatsapp_client import MODO_SIMULACION
     return {
         "status": "🟢 Bot ORESNA activo",
         "modo": "🧪 Simulación" if MODO_SIMULACION else "📱 Producción (WhatsApp real)",
         "propiedades_en_catalogo": motor_rag.total(),
         "sesiones_activas": len(gestor.sesiones),
-        "version": "1.1.0",
+        "version": "1.2.0",
         "simulador": "http://localhost:8000/simulator" if MODO_SIMULACION else None,
     }
 
@@ -214,7 +214,7 @@ async def simulador():
     Simulador visual de WhatsApp para pruebas locales.
     No requiere credenciales de WhatsApp para funcionar.
     """
-    sim_path = Path(__file__).parent / "simulator.html"
+    sim_path = Path(__file__).parent / "static" / "simulator.html"
     if sim_path.exists():
         return FileResponse(sim_path, media_type="text/html")
     return HTMLResponse("<h1>simulator.html no encontrado</h1>", status_code=404)
@@ -264,7 +264,7 @@ async def ver_leads():
     Ver todos los leads capturados.
     ⚠️ Solo para desarrollo - eliminar o proteger en producción
     """
-    leads_file = "leads.json"
+    leads_file = "data/leads.json"
     if os.path.exists(leads_file):
         with open(leads_file, "r", encoding="utf-8") as f:
             leads = json.load(f)
@@ -280,7 +280,7 @@ async def reiniciar_sesion(phone: str):
     """
     if phone in gestor.sesiones:
         del gestor.sesiones[phone]
-        gemini_ai = __import__("gemini_client", fromlist=["gemini_ai"]).gemini_ai
+        from app.ai.gemini_client import gemini_ai
         gemini_ai.clear_session(phone)
         return {"status": "ok", "message": f"Sesión de {phone} reiniciada"}
     return {"status": "ok", "message": f"No había sesión activa para {phone}"}
